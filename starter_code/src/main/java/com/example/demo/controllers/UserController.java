@@ -41,13 +41,23 @@ public class UserController {
 	@Autowired
 	private JwtUtils jwtUtils;
 
+	public UserController(UserRepository userRepository, CartRepository cartRepository, PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, JwtUtils jwtUtils) {
+		this.userRepository = userRepository;
+		this.cartRepository = cartRepository;
+		this.passwordEncoder = passwordEncoder;
+		this.authenticationManager = authenticationManager;
+		this.jwtUtils = jwtUtils;
+	}
+
 	@GetMapping("/id/{id}")
 	public ResponseEntity<User> findById(@PathVariable Long id) {
+		log.debug("UserController.findById called with id {}", id);
 		return ResponseEntity.of(userRepository.findById(id));
 	}
 	
 	@GetMapping("/{username}")
 	public ResponseEntity<User> findByUserName(@PathVariable String username) {
+		log.debug("UserController.findByUserName called with username {}", username);
 		User user = userRepository.findByUsername(username);
 		return user == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(user);
 	}
@@ -60,7 +70,7 @@ public class UserController {
 		Cart cart = new Cart();
 		cartRepository.save(cart);
 		user.setCart(cart);
-		if ( createUserRequest.getPassword().length() < 6 &&
+		if ( createUserRequest.getPassword().length() < 6 ||
 				!createUserRequest.getPassword().equals(createUserRequest.getConfirmPassword())) {
 			log.error("Cannot create user {} because the password is invalid", createUserRequest.getUsername());
 			return ResponseEntity.badRequest().build();
@@ -79,6 +89,7 @@ public class UserController {
 		SecurityContextHolder.getContext().setAuthentication(authentication);
 		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
 		String jwt = jwtUtils.generateTokenFromUsername(userDetails.getUsername());
+		log.info("User {} logged in", loginRequest.getUsername());
 		return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, jwt)
 				.body(userDetails);
 	}
